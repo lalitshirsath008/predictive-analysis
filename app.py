@@ -137,17 +137,38 @@ def get_risk_tier(prob, threshold=OPTIMIZED_THRESHOLD):
     else:
         return "HIGH", "risk-high", "CRITICAL ALERT", "Immediate inspection required!"
 
+# --- DEPLOYMENT DIAGNOSTICS ---
+st.sidebar.markdown("### 🛠️ System Diagnostics")
+MODEL_FILENAME = "xgb_predictive_model.pkl"
+MODEL_PATH = os.path.join(os.getcwd(), MODEL_FILENAME)
+
+with st.sidebar.expander("🔍 Debug Info", expanded=False):
+    st.write("CWD:", os.getcwd())
+    st.write("Model Path:", MODEL_PATH)
+    st.write("Model Exists:", os.path.exists(MODEL_PATH))
+    st.write("Files in Root:", os.listdir())
+
 @st.cache_resource
 def load_xgb_system():
-    model_path = r'c:\Users\Design - RGK\Desktop\predective analysis\xgb_predictive_model.pkl'
-    if os.path.exists(model_path):
-        data = joblib.load(model_path)
-        model = data['model']
-        explainer = shap.TreeExplainer(model)
-        return model, OPTIMIZED_THRESHOLD, explainer, data['features']
-    return None, OPTIMIZED_THRESHOLD, None, []
+    if os.path.exists(MODEL_PATH):
+        try:
+            data = joblib.load(MODEL_PATH)
+            model = data['model']
+            explainer = shap.TreeExplainer(model)
+            return model, OPTIMIZED_THRESHOLD, explainer, data['features']
+        except Exception as e:
+            st.error(f"Error loading model: {e}")
+            return None, OPTIMIZED_THRESHOLD, None, []
+    else:
+        st.error(f"CRITICAL: Model file not found at {MODEL_PATH}")
+        return None, OPTIMIZED_THRESHOLD, None, []
 
 model, default_threshold, explainer, feature_names = load_xgb_system()
+
+# --- PREVENT CRASH IF MODEL MISSING ---
+if model is None:
+    st.warning("⚠️ System is currently offline: Model file missing or corrupted.")
+    st.stop()
 
 # --- COMPONENTS ---
 def draw_health_gauge(prob):
